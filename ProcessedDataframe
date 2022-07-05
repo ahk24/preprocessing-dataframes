@@ -1,0 +1,77 @@
+class ProcessedDataframe:
+    import pandas as pd 
+    def __init__(self, dataframe: pd.DataFrame):
+        self.dataframe = dataframe
+    
+    def get_num_att(self, object_types: list = ['int64', 'float64']):
+        num_att = [col for col in self.dataframe if col in self.dataframe.select_dtypes(object_types).columns]
+        return self.dataframe[num_att]
+    
+    def get_text_att(self, object_types: list = ['O']):
+        text_att = [col for col in self.dataframe.columns if col in self.dataframe.select_dtypes(object_types).columns]
+        return self.dataframe[text_att]
+    
+    def get_df_correlation(self, feature: str):
+        correlation = self.dataframe.corr()[feature].sort_values(ascending= False)
+        return correlation
+    
+    def get_highly_correlated_feat(self, feature:str, intednded_positive_corr_value:float, intended_negative_corr_value: float = None):
+        correlation = self.dataframe.corr()[feature].sort_values(ascending= False).to_dict()
+        res = []
+        for key, value in correlation.items():
+            if intended_negative_corr_value:
+                if (value >= intednded_positive_corr_value) or (value <= intended_negative_corr_value):
+                    res.append(key)
+            else:
+                if (value >= intednded_positive_corr_value):
+                    res.append(key)
+        return res
+    
+    def fill_non_num_values(self, column_name: list, intended_value):
+        for name in column_name:
+            if self.dataframe[name].dtype == 'O':
+                self.dataframe.at[: , column_name] = self.dataframe.loc[: , column_name].fillna(intended_value, axis = 1)
+            else:
+                print('columns include numerical values!')
+                return None
+        return self
+    
+    def drop_high_nan_cat_columns(self ,column_list:list, threshold_of_nan_data: float = 0.3):
+        column_list = [col for col in column_list if col in self.dataframe.select_dtypes(['O']).columns]
+        df_category = self.dataframe[column_list]
+        final_list = []
+        for value in column_list:
+            if (df_category[value].isna().sum()/df_category.shape[0]) < threshold_of_nan_data:
+                final_list.append(value)
+        return df_category[final_list]
+    
+    def fill_nan_with_mode(self, col_list:list = None):
+        if col_list:
+            for col in col_list:
+                if col in self.dataframe.columns:
+                        self.dataframe[col] = self.dataframe[col].fillna(self.dataframe[col].mode()[0])
+                else:
+                    print('column not in data frame')
+                    return None
+                return self.dataframe[[col]]
+        else:
+            for col in self.dataframe.columns:
+                    self.dataframe[col] = self.dataframe[col].fillna(self.dataframe[col].mode()[0])
+            return self.dataframe[[col]]
+        
+    def get_unique_for_col(self, col_list:list = None):
+            import pandas as pd
+            if col_list:
+            unique_dict = {}
+            for col in col_list:
+                if col in self.dataframe.columns:
+                    unique_dict[col] = self.dataframe[col].unique()
+                else:
+                    print('columns not in the data frame')
+                    return None
+            return pd.DataFrame.from_dict(unique_dict, orient='index').T
+        else:
+            unique_dict = {}
+            for col in self.dataframe:
+                unique_dict[col] = self.dataframe[col].unique()
+            return pd.DataFrame.from_dict(unique_dict, orient='index').T
